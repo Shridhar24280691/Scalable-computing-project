@@ -2,64 +2,372 @@
 <html>
 <head>
   <title>Restaurant Recommender</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --text-main: #111827;
+      --text-sub: #6b7280;
+      --card-bg: #ffffff;
+      --border: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #e0f2fe, #f5f7fb 40%, #e5e7eb 100%);
+      color: var(--text-main);
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 16px 48px;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+
+    .search-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px 20px 16px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      margin-bottom: 24px;
+    }
+
+    .search-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      min-width: 140px;
+      flex: 1;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+    }
+
+    .field input,
+    .field select {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      background-color: #f9fafb;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.5);
+      background-color: #ffffff;
+    }
+
+    .actions {
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .btn-primary {
+      padding: 9px 18px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.35);
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out, background 0.08s;
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.45);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .results-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .results-count {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .status {
+      margin: 4px 0 12px;
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .status.error {
+      color: #b91c1c;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.10);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+    }
+
+    .card-name {
+      font-weight: 600;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      white-space: nowrap;
+    }
+
+    .card-line {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .rating {
+      font-size: 13px;
+      font-weight: 500;
+      color: #f97316;
+    }
+
+    .source {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding-top: 20px;
+      }
+      .title {
+        font-size: 24px;
+      }
+      .search-card {
+        padding: 16px 14px 12px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Find Restaurants</h1>
+  <div class="page">
+    <header class="header">
+      <div class="title">Find Restaurants</div>
+      <div class="subtitle">
+        Enter a city, a cuisine type and how many options you want(3,5,10). You'll see live restaurant data API.
+      </div>
+    </header>
 
-  <form id="search-form">
-    <input type="text" id="city" placeholder="City" value="Dublin" />
-    <input type="text" id="cuisine" placeholder="Cuisine (e.g. Indian)" />
-    <select id="limit">
-      <option value="3">3</option>
-      <option value="5" selected>5</option>
-      <option value="10">10</option>
-    </select>
-    <button type="submit">Search</button>
-  </form>
+    <section class="search-card">
+      <form id="search-form">
+        <div class="search-row">
+          <div class="field">
+            <label for="city">City</label>
+            <input type="text" id="city" value="Dublin" />
+          </div>
 
-  <div id="results"></div>
+          <div class="field">
+            <label for="cuisine">Cuisine</label>
+            <input type="text" id="cuisine" placeholder="e.g. Indian, Italian" />
+          </div>
+
+          <div class="field" style="max-width: 110px;">
+            <label for="limit">Results</label>
+            <select id="limit">
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn-primary">Search</button>
+          </div>
+        </div>
+      </form>
+      <div class="hint">
+        Tip: Search the restaurant according to your requirement.
+      </div>
+    </section>
+
+    <section>
+      <div class="results-header">
+        <div class="results-title">Results</div>
+        <div class="results-count" id="results-count"></div>
+      </div>
+      <div class="status" id="status-text"></div>
+      <div class="cards" id="results"></div>
+    </section>
+  </div>
 
   <script>
     const form = document.getElementById('search-form');
     const resultsDiv = document.getElementById('results');
+    const statusText = document.getElementById('status-text');
+    const resultsCount = document.getElementById('results-count');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    async function fetchRestaurants(city, cuisine, limit) {
+      const url =
+        `/api/restaurants/recommendations/` +
+        `?city=${encodeURIComponent(city)}` +
+        `&cuisine=${encodeURIComponent(cuisine)}` +
+        `&limit=${encodeURIComponent(limit)}`;
 
-      const city = document.getElementById('city').value;
-      const cuisine = document.getElementById('cuisine').value;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+
+    function renderResults(data) {
+      if (data.error) {
+        statusText.textContent = `API error: ${data.error}`;
+        statusText.className = 'status error';
+        resultsCount.textContent = '';
+        resultsDiv.innerHTML = '';
+        return;
+      }
+
+      const list = data.restaurants || [];
+      resultsCount.textContent = `${list.length} place(s) found for ${data.city}`;
+      statusText.textContent = '';
+      statusText.className = 'status';
+
+      if (!list.length) {
+        resultsDiv.innerHTML =
+          `<p style="font-size:13px;color:#6b7280">No restaurants found. Try another city or change the number of results.</p>`;
+        return;
+      }
+
+      const cardsHtml = list.map((r, index) => {
+        const rating = r.rating ? `${r.rating.toFixed ? r.rating.toFixed(1) : r.rating}/3` : 'N/A';
+        const address = r.address || `${r.lat?.toFixed(4)}, ${r.lon?.toFixed(4)}`;
+        const cuisine = r.cuisine || 'Not specified';
+        return `
+          <article class="card">
+            <div class="card-header">
+              <div class="card-name">${index + 1}. ${r.name || 'Unnamed place'}</div>
+              <span class="badge">${cuisine}</span>
+            </div>
+            <div class="card-line">${address}</div>
+            <div class="card-line rating">Rating: ${rating}</div>
+            <div class="source">${(r.source || 'external').toUpperCase()}</div>
+          </article>
+        `;
+      }).join('');
+
+      resultsDiv.innerHTML = cardsHtml;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const city = document.getElementById('city').value.trim();
+      const cuisine = document.getElementById('cuisine').value.trim();
       const limit = document.getElementById('limit').value;
 
+      if (!city) {
+        statusText.textContent = 'Please enter a city.';
+        statusText.className = 'status error';
+        return;
+      }
+
+      statusText.textContent = 'Loading restaurants...';
+      statusText.className = 'status';
+      resultsDiv.innerHTML = '';
+      resultsCount.textContent = '';
+
       try {
-        const url =
-          `/api/restaurants/recommendations/` +
-          `?city=${encodeURIComponent(city)}` +
-          `&cuisine=${encodeURIComponent(cuisine)}` +
-          `&limit=${encodeURIComponent(limit)}`;
-
-        const res = await fetch(url);
-        const data = await res.json();
-
-        console.log(data);  // so you can see the JSON in browser dev tools
-
-        if (data.error) {
-          resultsDiv.innerHTML = `<p style="color:red">API error: ${data.error}</p>`;
-          return;
-        }
-
-        if (!data.restaurants || data.restaurants.length === 0) {
-          resultsDiv.innerHTML =
-            `<p>No restaurants found for ${city} (${cuisine || 'any cuisine'}).</p>`;
-          return;
-        }
-
-        resultsDiv.innerHTML = data.restaurants.map(r =>
-          `<div><strong>${r.name}</strong> - (${r.city}) [Rating: ${r.rating}]</div>`
-        ).join("");
-
+        const data = await fetchRestaurants(city, cuisine, limit);
+        console.log(data);
+        renderResults(data);
       } catch (err) {
-        resultsDiv.innerHTML =
-          `<p style="color:red">Request failed: ${err}</p>`;
+        statusText.textContent = `Request failed: ${err.message}`;
+        statusText.className = 'status error';
       }
     });
   </script>

@@ -6,15 +6,11 @@ from rest_framework import status
 from .models import Review
 from .serializers import ReviewSerializer
 
-# Use your own key here
 OPEN_TRIPMAP_API_KEY = "5ae2e3f221c38a28845f05b6120c9b42b4fb3a54edcb7e9f05310aeb"
+GEOAPIFY_API_KEY = "6b6902edc8c74644b40c0738a010e7d9"
 
 
 def _get_restaurant_results(city, cuisine, budget, limit):
-    """
-    Call OpenTripMap (geoname + radius) and return a dict:
-    { city, cuisine, budget, count, restaurants, [error] }
-    """
 
     base = {
         "city": city,
@@ -25,7 +21,7 @@ def _get_restaurant_results(city, cuisine, budget, limit):
     }
 
     try:
-        # 1) Geocode the city
+        # Geocode city with OpenTripMap 
         geocode_url = "https://api.opentripmap.com/0.1/en/places/geoname"
         geo_res = requests.get(
             geocode_url,
@@ -36,68 +32,84 @@ def _get_restaurant_results(city, cuisine, budget, limit):
             base["error"] = f"Geocode error: {geo_res.status_code}"
             return base
 
-        geo_data = geo_res.json()          # <-- this is a dict (you saw it in the browser)
+        geo_data = geo_res.json()
         lat = geo_data.get("lat")
         lon = geo_data.get("lon")
         if lat is None or lon is None:
             base["error"] = "City not found in OpenTripMap"
             return base
 
-        # 2) Radius search around that point
-        radius_url = "https://api.opentripmap.com/0.1/en/places/radius"
-        radius_res = requests.get(
-            radius_url,
-            params={
-                "radius": 1000,          # metres around city centre
-                "lon": lon,
-                "lat": lat,
-                "rate": 2,               # popularity
-                "format": "json",        # IMPORTANT: this makes the response a LIST
+        # Fetches restaurants with Geoapify
+        places_url = "https://api.geoapify.com/v2/places"
+
+        # Base category: all restaurants
+        categories = "catering.restaurant"
+
+        # Optional cuisine-specific category, with safe fallback
+        cuisine_key = (cuisine or "").strip().lower()
+        use_fallback = False
+        if cuisine_key:
+            categories = f"catering.restaurant.{cuisine_key}"
+            use_fallback = True
+
+        def query_geoapify(categories_value):
+            params = {
+                "categories": categories_value,
+                "filter": f"circle:{lon},{lat},2000",  # 2km radius
                 "limit": limit,
-                "apikey": OPEN_TRIPMAP_API_KEY,
-            },
-            timeout=5,
-        )
-        if radius_res.status_code != 200:
-            base["error"] = f"Places error: {radius_res.status_code}"
+                "apiKey": GEOAPIFY_API_KEY,
+            }
+            return requests.get(places_url, params=params, timeout=8)
+
+        # First attempt: with specific category (if cuisine provided)
+        places_res = query_geoapify(categories)
+        data = places_res.json() if places_res.status_code == 200 else {}
+
+        # If cuisine-specific search returns nothing, fallback to all restaurants
+        features = data.get("features") or []
+        if use_fallback and (places_res.status_code != 200 or not features):
+            places_res = query_geoapify("catering.restaurant")
+            data = places_res.json() if places_res.status_code == 200 else {}
+            features = data.get("features") or []
+
+        if places_res.status_code != 200:
+            base["error"] = f"Geoapify error: {places_res.status_code}"
             return base
 
-        # format=json -> radius_res.json() is a LIST, as in your screenshot
-        places = radius_res.json()
-        # Example element (from your screenshot):
-        # {
-        #   "xid": "N516789822",
-        #   "name": "Catherine McAuley",
-        #   "rate": 3,
-        #   "point": { "lon": -6.24565, "lat": 53.33429 },
-        #   ...
-        # }
-
         restaurants = []
-        for p in places:
-            if not isinstance(p, dict):
-                continue  # safety
+        for f in features:
+            if not isinstance(f, dict):
+                continue
 
-            name = p.get("name")
+            props = f.get("properties", {})
+            geom = f.get("geometry", {})
+
+            name = props.get("name")
             if not name:
                 continue
 
-            point = p.get("point") or {}
-            lat_val = point.get("lat")
-            lon_val = point.get("lon")
+            coords = geom.get("coordinates", [None, None])
+            lon_val, lat_val = coords[0], coords[1]
+
+            address = (
+                props.get("address_line1")
+                or props.get("street")
+                or props.get("formatted")
+                or ""
+            )
 
             restaurants.append(
                 {
-                    "id": p.get("xid"),
+                    "id": props.get("place_id"),
                     "name": name,
                     "city": city,
-                    "address": "",  # full address would need a second details call
+                    "address": address,
                     "lat": lat_val,
                     "lon": lon_val,
-                    "cuisine": cuisine or "unknown",
-                    "rating": p.get("rate", 0),
+                    "cuisine": cuisine or "restaurant",
+                    "rating": props.get("rank", 0),  # popularity score
                     "price_level": 0,
-                    "source": "opentripmap",
+                    "source": "geoapify",
                 }
             )
 
@@ -109,8 +121,6 @@ def _get_restaurant_results(city, cuisine, budget, limit):
         base["error"] = f"RequestException: {e}"
         return base
     except Exception as e:
-        # This is where your "'list' object has no attribute 'get'" came from before.
-        # With the code above, there is no .get() on a list anymore.
         base["error"] = f"Unexpected error: {e}"
         return base
 
