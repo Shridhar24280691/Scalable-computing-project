@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Restaurant Recommender</title>
+</head>
+<body>
+  <h1>Find Restaurants</h1>
+
+  <form id="search-form">
+    <input type="text" id="city" placeholder="City" value="Dublin" />
+    <input type="text" id="cuisine" placeholder="Cuisine (e.g. Indian)" />
+    <select id="limit">
+      <option value="3">3</option>
+      <option value="5" selected>5</option>
+      <option value="10">10</option>
+    </select>
+    <button type="submit">Search</button>
+  </form>
+
+  <div id="results"></div>
+
+  <script>
+    const form = document.getElementById('search-form');
+    const resultsDiv = document.getElementById('results');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const city = document.getElementById('city').value;
+      const cuisine = document.getElementById('cuisine').value;
+      const limit = document.getElementById('limit').value;
+
+      try {
+        const url =
+          `/api/restaurants/recommendations/` +
+          `?city=${encodeURIComponent(city)}` +
+          `&cuisine=${encodeURIComponent(cuisine)}` +
+          `&limit=${encodeURIComponent(limit)}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        console.log(data);  // so you can see the JSON in browser dev tools
+
+        if (data.error) {
+          resultsDiv.innerHTML = `<p style="color:red">API error: ${data.error}</p>`;
+          return;
+        }
+
+        if (!data.restaurants || data.restaurants.length === 0) {
+          resultsDiv.innerHTML =
+            `<p>No restaurants found for ${city} (${cuisine || 'any cuisine'}).</p>`;
+          return;
+        }
+
+        resultsDiv.innerHTML = data.restaurants.map(r =>
+          `<div><strong>${r.name}</strong> - (${r.city}) [Rating: ${r.rating}]</div>`
+        ).join("");
+
+      } catch (err) {
+        resultsDiv.innerHTML =
+          `<p style="color:red">Request failed: ${err}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
